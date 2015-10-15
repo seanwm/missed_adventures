@@ -4,7 +4,10 @@ var sqlite3 = require('sqlite3').verbose();
 var db = new sqlite3.Database('adventureConnections.sqlite');
 var fs = require('fs');
 
+/*
+* Some commented-out code in "Post Tweet" appends a random set of directions/commands to tweets
 var directions = ["N","S","E","W","U", "D", "DROP", "REST", "STAND", "LOOK","GET","THROW","FLEE"];
+*/
 
 // http://gryphonking.aelfhame.net/iview.php3?folder=art/games&name=senmurv
 
@@ -59,24 +62,6 @@ function getTweet()
 		});
 
 	});	
-}
-
-function getRandomDirections()
-{
-	var count = 0;
-
-	while (count<2)
-	{
-		count = Math.floor(Math.random()*6);
-	}
-
-	var dirs = {};
-	while (Object.keys(dirs).length < count)
-	{
-		dirs[directions[Math.floor(Math.random()*directions.length)]] = true;
-	}
-
-	return "[" + Object.keys(dirs).join(", ") + "]";
 }
 
 function capitalize(text)
@@ -149,68 +134,30 @@ function postTweet(tweet)
 
 }
 
-function saveOptions(options)
-{
-	var fs = require('fs');
-	var data = JSON.stringify(options);
-
-	fs.writeFile('./date_vars.js', data, function (err) {
-		if (err) {
-			console.log('There has been an error saving your configuration data.');
-			console.log(err.message);
-			return;
-		}
-		console.log('Configuration saved successfully.')
-	});
-}
-
 function randomCreature()
 {
 	creature = creatures[Math.floor(Math.random()*creatures.length)];
 
 	creature = creature.slice(0,creature.indexOf(" ")+1) + "[" + creature.slice(creature.indexOf(" ")+1) + "]";
-	//return "{INSERT_CREATURE}";
 
 	return creature;
 }
 
 
-/*
-// We need to include our configuration file
-var T = new Twit(require('./config.js'));
+function getRandomDirections()
+{
+	var count = 0;
 
-// This is the URL of a search for the latest tweets on the '#mediaarts' hashtag.
-var mediaArtsSearch = {q: "#mediaarts", count: 10, result_type: "recent"}; 
+	while (count<2)
+	{
+		count = Math.floor(Math.random()*6);
+	}
 
-// This function finds the latest tweet with the #mediaarts hashtag, and retweets it.
-function retweetLatest() {
-	T.get('search/tweets', mediaArtsSearch, function (error, data) {
-	  // log out any errors and responses
-	  console.log(error, data);
-	  // If our search request to the server had no errors...
-	  if (!error) {
-	  	// ...then we grab the ID of the tweet we want to retweet...
-		var retweetId = data.statuses[0].id_str;
-		// ...and then we tell Twitter we want to retweet it!
-		T.post('statuses/retweet/' + retweetId, { }, function (error, response) {
-			if (response) {
-				console.log('Success! Check your bot, it should have retweeted something.')
-			}
-			// If there was an error with our Twitter call, we print it out here.
-			if (error) {
-				console.log('There was an error with Twitter:', error);
-			}
-		})
-	  }
-	  // However, if our original search request had an error, we want to print it out here.
-	  else {
-	  	console.log('There was an error with your hashtag search:', error);
-	  }
-	});
+	var dirs = {};
+	while (Object.keys(dirs).length < count)
+	{
+		dirs[directions[Math.floor(Math.random()*directions.length)]] = true;
+	}
+
+	return "[" + Object.keys(dirs).join(", ") + "]";
 }
-
-// Try to retweet something as soon as we run the program...
-retweetLatest();
-// ...and then every hour after that. Time here is in milliseconds, so
-// 1000 ms = 1 second, 1 sec * 60 = 1 min, 1 min * 60 = 1 hour --> 1000 * 60 * 60
-setInterval(retweetLatest, 1000 * 60 * 60);*/

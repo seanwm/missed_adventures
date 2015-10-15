@@ -39,6 +39,7 @@ db.serialize(function(){
 
 getTweet();
 
+// Change this to change the tweet frequency:
 setInterval(getTweet, 1000 * 60 * 60 * 3);
 
 function getTweet()

@@ -21,12 +21,12 @@ catch (err) {
 }
 
 db.serialize(function(){
-	db.run("DROP TABLE setups;");
-	db.run("DROP TABLE descriptions;")
-	db.run("CREATE TABLE setups (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
-	db.run("CREATE TABLE descriptions (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
+	//db.run("DROP TABLE setups;");
+	//db.run("DROP TABLE descriptions;")
+//	db.run("CREATE TABLE setups (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
+//	db.run("CREATE TABLE descriptions (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
 
-	db.each("SELECT id, connection FROM connections ORDER BY RANDOM();", [], function(err, row){
+	db.each("SELECT id, connection FROM connections WHERE parsed=0 OR parsed IS NULL ORDER BY RANDOM();", [], function(err, row){
 			if (err)
 				console.log(err);
 			//console.dir(row);
@@ -203,6 +203,10 @@ function parseConnection(text, connectionID, callback)
 			/today/gi.test(sentenceText)
 			||
 			/yesterday/gi.test(sentenceText)
+			||
+			/hit me up/gi.test(sentenceText)
+			||
+			/tell me what/gi.test(sentenceText)
 			)
 			continue;
 

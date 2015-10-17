@@ -10,21 +10,11 @@ var keyedConnections = {};
 
 /*db.serialize(function() {
   db.run("CREATE TABLE connections (id INTEGER PRIMARY KEY, connection TEXT, parsed INTEGER)");
-  db.run("CREATE TABLE setups (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, used INTEGER)");
-  db.run("CREATE TABLE descriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, used INTEGER)");
+  db.run("CREATE TABLE setups (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
+  db.run("CREATE TABLE descriptions (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
   db.run("CREATE TABLE creatures (id INTEGER PRIMARY KEY AUTOINCREMENT, creature TEXT, used INTEGER)");
   db.run("CREATE TABLE towns (id INTEGER PRIMARY KEY AUTOINCREMENT, town TEXT, used INTEGER)");
-
-/*  var stmt = db.prepare("INSERT INTO lorem VALUES (?)");
-  for (var i = 0; i < 10; i++) {
-      stmt.run("Ipsum " + i);
-  }
-  stmt.finalize();
-
-  db.each("SELECT rowid AS id, info FROM lorem", function(err, row) {
-      console.log(row.id + ": " + row.info);
-  });*/
-//});
+});*/
 
 function loadKeyedConnections()
 {
@@ -87,34 +77,51 @@ function downloadAndParse(urls)
 		url = "https://" + url.slice(url.indexOf("org//")+5);
 
 	console.log("Url: "+url);
-  	download(url, function(data){
-		//console.log("Got data: "+data);
-		if (data) {
-			var $ = cheerio.load(data);
-			var post_content = $("#postingbody").text();
-			//console.log("++++++++++++++++++++++++++++++++++++++++");
-			//console.log(post_content);
 
-			if (post_content.indexOf("There is nothing here") > 0 && post_content.indexOf("No web page for this address")>0)
-			{
-				console.log("Skipping 404");
-				if (urls.length>0)
-				{
-					sleep(2000);
-					downloadAndParse(urls);
+	var url_slug = url.substr(url.lastIndexOf('/') + 1);
+	var connectionID = url_slug.slice(0,url_slug.indexOf('.')-1);
+
+	db.get("SELECT id, connection FROM connections WHERE id=?;", [connectionID], function(err, row){
+		if (typeof row === 'undefined' || row == null)
+		{
+			download(url, function(data){
+				//console.log("Got data: "+data);
+				if (data) {
+					var $ = cheerio.load(data);
+					var post_content = $("#postingbody").text();
+					//console.log("++++++++++++++++++++++++++++++++++++++++");
+					//console.log(post_content);
+
+					if (post_content.indexOf("There is nothing here") > 0 && post_content.indexOf("No web page for this address")>0)
+					{
+						console.log("Skipping 404");
+						if (urls.length>0)
+						{
+							sleep(2000);
+							downloadAndParse(urls);
+						}
+						else
+							saveConnections();
+
+						return;
+					}
+
+					parseConnection(post_content, url, function(){
+						if (urls.length>0)
+							downloadAndParse(urls);
+						else
+							saveConnections();
+					});
 				}
-				else
-					saveConnections();
-
-				return;
-			}
-
-			parseConnection(post_content, url, function(){
-				if (urls.length>0)
-					downloadAndParse(urls);
-				else
-					saveConnections();
 			});
+		}
+		else
+		{
+			console.log("Skipping " + connectionID);
+			if (urls.length>0)
+				downloadAndParse(urls);
+			else
+				saveConnections();
 		}
   	});
 
@@ -127,8 +134,9 @@ function parseConnection(text, url, callback)
 	console.log("Saving text for slug: " + url_slug);
 
 	db.serialize(function() {
-		var stmt = db.prepare("INSERT OR REPLACE INTO connections (id,connection,parsed) VALUES (?,?,0)");
-		stmt.run(url_slug.slice(0,url_slug.indexOf('.')-1),text);
+		var connectionID = url_slug.slice(0,url_slug.indexOf('.')-1);
+		var stmt = db.prepare("INSERT OR REPLACE INTO connections (id,connection,parsed) VALUES (?,?,(select parsed from connections where id = ?))");
+		stmt.run(connectionID,text,connectionID);
 		stmt.finalize();
 	});
 

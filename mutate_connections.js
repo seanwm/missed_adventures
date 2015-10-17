@@ -23,28 +23,29 @@ catch (err) {
 db.serialize(function(){
 	db.run("DROP TABLE setups;");
 	db.run("DROP TABLE descriptions;")
-	db.run("CREATE TABLE setups (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, used INTEGER)");
-	db.run("CREATE TABLE descriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, used INTEGER)");
+	db.run("CREATE TABLE setups (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
+	db.run("CREATE TABLE descriptions (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
 
 	db.each("SELECT id, connection FROM connections ORDER BY RANDOM();", [], function(err, row){
 			if (err)
 				console.log(err);
 			//console.dir(row);
 
-		parseConnection(row.connection,function(err, setups, descriptions){
+		parseConnection(row.connection,row.id,function(err, setups, descriptions){
+
 			if (err)
 				console.log(err);
 
 			db.serialize(function(){
-				var setup_stmt = db.prepare("INSERT INTO setups (content, used) VALUES (?,0);");
+				var setup_stmt = db.prepare("INSERT OR REPLACE INTO setups (content, used, connectionID, sentenceNumber) VALUES (?,(select used from setups where connectionID = ? and sentenceNumber = ?),?,?);");
 				for (var i = setups.length - 1; i >= 0; i--) {
-					setup_stmt.run(setups[i]);
+					setup_stmt.run(setups[i].content, setups[i].connectionID, setups[i].sentenceNumber, setups[i].connectionID, setups[i].sentenceNumber);
 				};
 				setup_stmt.finalize();
 
-				var description_stmt = db.prepare("INSERT INTO descriptions (content, used) VALUES (?,0);");
+				var description_stmt = db.prepare("INSERT OR REPLACE INTO descriptions (content, used, connectionID, sentenceNumber) VALUES (?,(select used from descriptions where connectionID = ? and sentenceNumber = ?),?,?);");
 				for (var i = descriptions.length - 1; i >= 0; i--) {
-					description_stmt.run(descriptions[i]);
+					description_stmt.run(descriptions[i].content, descriptions[i].connectionID, descriptions[i].sentenceNumber, descriptions[i].connectionID, descriptions[i].sentenceNumber);
 				};
 				description_stmt.finalize();
 
@@ -58,8 +59,32 @@ db.serialize(function(){
 	});
 });
 
+function insertSetup(content, connectionID, sentenceNumber)
+{
+	var setup_stmt = db.prepare("INSERT INTO setups (content, used, connectionID, sentenceNumber) VALUES (?,0,?,?);");
 
-function parseConnection(text, callback)
+		setup_stmt.run(content,connectionID,sentenceNumber);
+
+	setup_stmt.finalize();
+}
+function insertDescription(content, connectionID, sentenceNumber)
+{
+	var description_stmt = db.prepare("INSERT INTO descriptions (content, used, connectionID, sentenceNumber) VALUES (?,0,?,?);");
+
+		description_stmt.run(content,connectionID,sentenceNumber);
+
+	description_stmt.finalize();
+}
+
+/*parseConnection("I backed in 2 spots away from and parked.",
+	function(err, setups, descriptions){
+		console.dir(setups);
+		console.dir(descriptions);
+	}
+);*/
+
+
+function parseConnection(text, connectionID, callback)
 {
 	var setups = [];
 	var descriptions = [];
@@ -168,6 +193,16 @@ function parseConnection(text, callback)
 			/saturday/gi.test(sentenceText)
 			||
 			/if this is you/gi.test(sentenceText)
+			||
+			/ould have had/gi.test(sentenceText)
+			||
+			/see this/gi.test(sentenceText)
+			||
+			/ ago/gi.test(sentenceText)
+			||
+			/today/gi.test(sentenceText)
+			||
+			/yesterday/gi.test(sentenceText)
 			)
 			continue;
 
@@ -179,6 +214,7 @@ function parseConnection(text, callback)
 		sentenceText = sentenceText.replace(/^if only/gi,"");
 		sentenceText = sentenceText.replace(/^besides,/gi,"");
 		sentenceText = sentenceText.replace(/^Still,/gi,"");
+		sentenceText = sentenceText.replace(/must of/gi,"must have");
 		sentenceText = sentenceText.replace(/^Would/gi,"I would");
 		sentenceText = sentenceText.replace(/^Didn't/gi,"I doesn't");
 		sentenceText = sentenceText.replace(/^Don't/gi,"I doesn't");
@@ -186,8 +222,11 @@ function parseConnection(text, callback)
 		sentenceText = sentenceText.replace(/^But /gi,"");
 		sentenceText = sentenceText.replace(/^And /gi,"");
 		sentenceText = sentenceText.replace(/i didn't/gi,"I doesn't");
+		sentenceText = sentenceText.replace(/you didn't/gi,"you don't");
+		sentenceText = sentenceText.replace(/you seemed/gi,"you seem");
 		sentenceText = sentenceText.replace(/i don't/gi,"I doesn't");
 		sentenceText = sentenceText.replace(/i wasn't/gi,"I isn't");
+		sentenceText = sentenceText.replace(/(left)([\.\?\!])/gi,"leave$2");
 		sentenceText = sentenceText.replace(/it didn't/gi,"it doesn't");
 		sentenceText = sentenceText.replace(/seattle/gi,places[Math.floor(Math.random()*places.length)]);
 		sentenceText = sentenceText.replace(/boston/gi,places[Math.floor(Math.random()*places.length)]);
@@ -208,191 +247,219 @@ function parseConnection(text, callback)
 		sentenceText = sentenceText.replace(/frisco/gi,places[Math.floor(Math.random()*places.length)]);
 
 		if (/^It was/i.test(sentenceText)) {
-			setups.push(prettify(nlp.pos(sentenceText).sentences[0].to_present().text()));
+			setups.push({content:prettify(nlp.pos(sentenceText).sentences[0].to_present().text()),sentenceNumber:senti,connectionID:connectionID});
 			//setups.push(prettify(sentence.to_present().text()));
 			continue;
 		}
 
+		var tenseVerbs = ["VBD"];
 
-/*		if (/you were wearing/i.test(sentenceText)) 
-		{
-			good_sentences.wearing.push(sentence.to_present().text());
+		var mangled = sentenceText.trim();
 
-			continue;
-		}
+		var dontChangeTenseAfter = ["have","would","should","looked","being","seemed", "look", "seem"];
+		var dontChangeTense = ["been"];
+		var last_token = "";
+		var second_to_last_token = "";
+		var third_to_last_token = "";
+		var last_token_pos = "";
+		var second_to_last_token_pos = "";
+		var third_to_last_token_pos = "";
+		var last_verb_you = false;
 
-		if ((/^I[.,-\/#!$%\^&\*;:{}=\-_`~()\s]+/i.test(sentenceText) || /\s+I[.,-\/#!$%\^&\*;:{}=\-_`~()\s]+/i.test(sentenceText)) && /\syou/.test(sentenceText)) 
-		{*/
-			var tenseVerbs = ["VBD"];
-
-			var mangled = sentenceText.trim();
-
-			var dontChangeTenseAfter = ["have"];
-			var dontChangeTense = ["been"];
-			var last_token = "";
-			var second_to_last_token = "";
-			var last_verb_you = false;
-
-			for (var tokeni = 0; tokeni < sentence.tokens.length; tokeni++) {
-				token = sentence.tokens[tokeni];
-				//console.dir(token);
-				if (token.pos.tag=="VBD" || token.pos.tag=="CP" || (token.pos.tag=="VB" && token.text.slice(token.text.length - 2)=="ed"))
+		for (var tokeni = 0; tokeni < sentence.tokens.length; tokeni++) {
+			token = sentence.tokens[tokeni];
+			token_text = token.text.replace(/[\.,\!\?\"\']/g,"");
+			/*
+			* First some manual things.
+			*/
+			if (second_to_last_token.toLowerCase()=="could" && last_token.toLowerCase()=="have")
+			{
+				mangled = mangled.replace(second_to_last_token + " " + last_token + " " + token.text, "can " + nlp.verb(token_text).conjugate().infinitive);
+			}
+			else if (third_to_last_token.toLowerCase()=="could" && second_to_last_token.toLowerCase()=="not" && last_token.toLowerCase()=="have"
+				||
+				third_to_last_token.toLowerCase()=="should" && second_to_last_token.toLowerCase()=="not" && last_token.toLowerCase()=="have"
+				||
+				last_token_pos=="RB")
+			{
+				// do nothing
+			}
+			else if (second_to_last_token.toLowerCase()=="should" && last_token.toLowerCase()=="have")
+			{
+				mangled = mangled.replace("should have " + token.text, "should " + nlp.verb(token_text).conjugate().infinitive);
+			}
+			else if (last_token.toLowerCase()=="would")
+			{
+				mangled = mangled.replace(token.text, nlp.verb(token_text).conjugate().infinitive);
+			}
+			else if (token.pos.tag=="VBD" || token.pos.tag=="CP" || (token.pos.tag=="VB" && token_text.slice(token_text.length - 2)=="ed"))
+			{
+				//console.log("Verb: " + token.text + " " + token.pos.tag);
+				if (dontChangeTenseAfter.indexOf(last_token)==-1 
+					&& dontChangeTense.indexOf(token_text)==-1)
 				{
-					if (dontChangeTenseAfter.indexOf(last_token)==-1 
-						&& dontChangeTense.indexOf(token.text)==-1)
+					//console.dir(token.analysis);
+					var vbtext = token_text;
+					if (vbtext.charAt(vbtext.length-1)==",")
+						vbtext = vbtext.slice(0,vbtext.length-1);
+					var vbpres = nlp.verb(vbtext).to_present();
+					var vbinf  = nlp.verb(vbtext).conjugate().infinitive;
+
+					if (((last_token.toLowerCase()=="you" || last_token.toLowerCase()=="we") || (last_verb_you && last_token.toLowerCase()=="and")) && token.pos.tag!="CP")
 					{
-						//console.dir(token.analysis);
-						var vbtext = token.text;
-						if (vbtext.charAt(vbtext.length-1)==",")
-							vbtext = vbtext.slice(0,vbtext.length-1);
-						var vbpres = nlp.verb(vbtext).to_present();
-						var vbinf  = nlp.verb(vbtext).conjugate().infinitive;
-
-						if (((last_token=="you" || last_token=="we") || (last_verb_you && last_token=="and")) && token.pos.tag!="CP")
-						{
-							mangled = mangled.replace(vbtext,vbinf);
-							last_verb_you = true;
-						}
-						else
-						{
-							last_verb_you = false;
-							mangled = mangled.replace(vbtext,vbpres);
-						}
-
-						//console.log("FOUND PAST VERB: " + vbtext + " => " + vbpres);
+						//console.log("Verb: " + token.text + " " + token.pos.tag + " YOU MODE");
+						mangled = mangled.replace(vbtext,vbinf);
+						last_verb_you = true;
 					}
 					else
 					{
-						if (second_to_last_token.toLowerCase()=="could" && last_token.toLowerCase()=="have")
-						{
-							mangled = mangled.replace("could have " + token.text, "can " + nlp.verb(token.text).conjugate().infinitive);
-						}
+						last_verb_you = false;
+						mangled = mangled.replace(vbtext,vbpres);
 					}
-				}
-				else if (token.pos.tag=="VB") // generic verb (i.e. can't recognize tense)
-				{
-						if (second_to_last_token.toLowerCase()=="could" && last_token.toLowerCase()=="have")
-						{
-							mangled = mangled.replace("could have " + token.text, "can " + nlp.verb(token.text).conjugate().infinitive);
-						}
-						if (token.text.toLowerCase()=="left")
-						{
-							mangled = mangled.replace(token.text, "leave");
-						}
-					//console.log("Other verb: " + token.text + " " + token.text.slice(token.text.length - 2));
-					// manually nonsense:
-					//if (token.text=="left") left scared melted chatted
-					//console.log("Other verb: " + token.pos.name + " -> " + token.text + " = " + token.pos.tense);
-				}
-				else if (token.pos.tag=="VBN")
-				{
-					if (last_token=="you" || second_to_last_token=="you")
-					{
-						mangled = mangled.replace(token.text, nlp.verb(token.text).conjugate().infinitive);						
-					}
-					else if (last_token=="i" || second_to_last_token=="i")
-					{
-						mangled = mangled.replace(token.text, nlp.verb(token.text).to_present());												
-					}
-				}
-				else if (token.pos.tag=="VBP")
-				{
-					if (last_token=="i" || second_to_last_token=="i")
-					{
-						mangled = mangled.replace(token.text, nlp.verb(token.text).to_present());												
-					}	
-				}
 
-				second_to_last_token = last_token;
-				last_token = token.text.toLowerCase();
-			};
+					//console.log("FOUND PAST VERB: " + vbtext + " => " + vbpres);
+				}
+			}
+			else if (token.pos.tag=="VB") // generic verb (i.e. can't recognize tense)
+			{
+				//console.log("Verb: " + token.text + " " + token.pos.tag);
+				if (second_to_last_token.toLowerCase()=="could" && last_token.toLowerCase()=="have")
+				{
+					mangled = mangled.replace("could have " + token.text, "can " + nlp.verb(token_text).conjugate().infinitive);
+				}
+				if (second_to_last_token.toLowerCase()=="should" && last_token.toLowerCase()=="have")
+				{
+					mangled = mangled.replace("should have " + token.text, "should " + nlp.verb(token_text).conjugate().infinitive);
+				}
+				if (token_text.toLowerCase()=="left")
+				{
+					mangled = mangled.replace(token.text, "leave");
+				}
+				//console.log("Other verb: " + token.text + " " + token.text.slice(token.text.length - 2));
+				// manually nonsense:
+				//if (token.text=="left") left scared melted chatted
+				//console.log("Other verb: " + token.pos.name + " -> " + token.text + " = " + token.pos.tense);
+			}
+			else if (token.pos.tag=="VBN")
+			{
+				//console.log("Verb: " + token.text + " " + token.pos.tag);
+				if (last_token=="you" || second_to_last_token=="you")
+				{
+					mangled = mangled.replace(token.text, nlp.verb(token_text).conjugate().infinitive);						
+				}
+				/*else if (last_token=="i" || second_to_last_token=="i")
+				{
+					mangled = mangled.replace(token.text, nlp.verb(token.text).to_present());												
+				}*/
+			}
+			else if (token.pos.tag=="VBP")
+			{
+				if (last_token.toLowerCase()=="i" || second_to_last_token.toLowerCase()=="i")
+				{
+					mangled = mangled.replace(token.text, nlp.verb(token_text).to_present());												
+				}	
+			}
+
+			third_to_last_token_pos = second_to_last_token_pos;
+			second_to_last_token_pos = last_token_pos;
+			last_token_pos = token.pos.tag;
+
+			third_to_last_token = second_to_last_token;
+			second_to_last_token = last_token;
+			last_token = token_text;
+		};
 			//var matches = str.match(/\s(I)[.,-\/#!$%\^&\*;:{}=\-_`~()\s]+/g);
 
-			var replacedFirstI = false;
+		var replacedFirstI = false;
 
-			if (/^i[.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+/i.test(mangled))
-			{
-				mangled = mangled.replace(/^(i)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i, randomCreature() + "$2");
-				replacedFirstI = true;
-			}
-			else if (/([\.\'\"\s]+)(I)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i.test(mangled))
-			{
-				mangled = mangled.replace(/([\.\'\"\s]+)(I)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i, "$1" + randomCreature() + "$3");
-				replacedFirstI = true;
-			}
+		if (/^i[.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+/i.test(mangled))
+		{
+			mangled = mangled.replace(/^(i)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i, randomCreature() + "$2");
+			replacedFirstI = true;
+		}
+		else if (/([\.\'\"\s]+)(I)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i.test(mangled))
+		{
+			mangled = mangled.replace(/([\.\'\"\s]+)(I)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i, "$1" + randomCreature() + "$3");
+			replacedFirstI = true;
+		}
 
-			if (/^we[\s]+/i.test(mangled))
-			{
-				mangled = mangled.replace(/^we/i, "You and " + (replacedFirstI==true ? "it" : randomCreature()));
-				replacedFirstI = true;
-			}
-			else if (/([\.\'\"\s]+)(we)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i.test(mangled))
-			{
-				mangled = mangled.replace(/([\.\'\"\s]+)(we)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i, "$1you and " + (replacedFirstI==true ? "it" : randomCreature()) + "$3");
-				replacedFirstI = true;
-			}
+		if (/^we[\s]+/i.test(mangled))
+		{
+			mangled = mangled.replace(/^we/i, "You and " + (replacedFirstI==true ? "it" : randomCreature()));
+			replacedFirstI = true;
+		}
+		else if (/([\.\'\"\s]+)(we)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i.test(mangled))
+		{
+			mangled = mangled.replace(/([\.\'\"\s]+)(we)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/i, "$1you and " + (replacedFirstI==true ? "it" : randomCreature()) + "$3");
+			replacedFirstI = true;
+		}
 
 
-			if (/^(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
-			{
-				mangled = mangled.replace(/^(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, (replacedFirstI==true ? "it" : randomCreature()) + "$2");
-				replacedFirstI = true;
-			}
-			else if (/([\.\'\"\s]+)(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
-			{
-				mangled = mangled.replace(/([\.\'\"\s]+)(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, "$1" + (replacedFirstI==true ? "it" : randomCreature()) + "$3");
-				replacedFirstI = true;
-			}
+		if (/^(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
+		{
+			mangled = mangled.replace(/^(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, (replacedFirstI==true ? "it" : randomCreature()) + "$2");
+			replacedFirstI = true;
+		}
+		else if (/([\.\'\"\s]+)(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
+		{
+			mangled = mangled.replace(/([\.\'\"\s]+)(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, "$1" + (replacedFirstI==true ? "it" : randomCreature()) + "$3");
+			replacedFirstI = true;
+		}
 
-			if (/^(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
-			{
-				mangled = mangled.replace(/^(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, (replacedFirstI==true ? "its" : (randomCreature() + "'s") ) + "$2");
-				replacedFirstI = true;
-			}
-			else if (/([\.\'\"\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
-			{
-				mangled = mangled.replace(/([\.\'\"\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, "$1" + (replacedFirstI==true ? "its" : (randomCreature() + "'s")) + "$3");
-				replacedFirstI = true;
-			}
+		if (/^(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
+		{
+			mangled = mangled.replace(/^(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, (replacedFirstI==true ? "its" : (randomCreature() + "'s") ) + "$2");
+			replacedFirstI = true;
+		}
+		else if (/([\.\'\"\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i.test(mangled))
+		{
+			mangled = mangled.replace(/([\.\'\"\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/i, "$1" + (replacedFirstI==true ? "its" : (randomCreature() + "'s")) + "$3");
+			replacedFirstI = true;
+		}
 
-			mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(our)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1your$3");
+		mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(our)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1your$3");
 
-			mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1its$3");
+		mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1its$3");
 
-			mangled = mangled.replace(/myself/ig, "itself");
+		mangled = mangled.replace(/myself/ig, "itself");
 
-			mangled = mangled.replace(/([\.\'\"\s]+)(I)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/ig, "$1it$3");
+		mangled = mangled.replace(/([\.\'\"\s]+)(I)([.,-\/#!$%\^&\*;:{}=\-_`~()\s\']+)/ig, "$1it$3");
 
-			mangled = mangled.replace(/([\.\'\"\s]+)(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig, "$1it$3");
+		mangled = mangled.replace(/([\.\'\"\s]+)(me)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig, "$1it$3");
 
-			mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(am)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1is$3");
+		mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(am)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1is$3");
 
-			mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1its$3");
-			//mangled = mangled.replace(/(I)/g, "it");
+		mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(my)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/ig,"$1its$3");
 
-			if (mangled.length>120)
-				continue;
+		mangled = mangled.replace(/([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)(liks)([.,-\/#!$%\^&\*;:{}=\-_`~()\s]+)/gi, "like");	
+		//mangled = mangled.replace(/(I)/g, "it");
 
-			if (mangled.indexOf("'m am")>0)
-				continue;
+		if (mangled.length>120)
+			continue;
+
+		if (mangled.indexOf("'m am")>0)
+			continue;
 	
-			mangled = mangled.replace(/(\'[dt])+s/ig,"$1");
+		mangled = mangled.replace(/(\'[dt])+s/ig,"$1");
 
-			if (mangled.slice(mangled.length-2)==".s") 
-				mangled = mangled.slice(0,mangled.length-1);
+		if (/[\!\.\?]s/.test(mangled.slice(mangled.length-2))) 
+			mangled = mangled.slice(0,mangled.length-1);
 
-//			parsedMangled = nlp.pos(mangled);
-			
-			mangled = prettify(mangled);
+//		parsedMangled = nlp.pos(mangled);
+		
+		mangled = prettify(mangled);
 
-			if (/^You[\s,]/.test(mangled))
-			{
-				setups.push(mangled);
-			}
-			else if (replacedFirstI==true)
-			{
-				descriptions.push(mangled);
-			}
+		if (/^You[\s,]/.test(mangled))
+		{
+			var desc = {content:mangled,sentenceNumber:senti,connectionID:connectionID};
+			//console.dir(desc);
+			setups.push(desc);
+		}
+		else if (replacedFirstI==true)
+		{
+			var desc = {content:mangled,sentenceNumber:senti,connectionID:connectionID};
+			descriptions.push(desc);
+		}
 
 	};
 

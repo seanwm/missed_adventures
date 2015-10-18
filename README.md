@@ -26,13 +26,11 @@ I started out looking through all missed connections posts, because everyone can
 * A woman was kind to the man writing in a professional context: a waitress, nurse, cashier, etc.
 * A man was staring at a woman, when she looked up and smiled awkwardly to break the creepy tension. The man writing interprets this as reciprocated interest.
 
-***
-My fellow men: neither of these are "missed connections". Even allowing for inevitable, innocent misreadings of encounters, the category should've been called, "Oh My God, I Can't Believe I Didn't Get Your Contact Info, Even Though We Were In A Situation In Which Asking For It Would Have Been Totally Appropriate," but even an idealist like Craig has to take a pragmatic shotcut now and then. 
-****
+My fellow men: neither of these are "missed connections". Sure, there will be the inevitable, innocent misreadings of encounters, but maybe we'd all be better off if Craig re-named the category, "Oh My God, I Can't Believe I Didn't Get Your Contact Info, Even Though We Were In A Situation In Which Asking For It Would Have Been Totally Appropriate." Of course, even an idealist like Craig has to take a pragmatic shotcut now and then; maybe we could settle for a way for other users to add [this video](https://www.youtube.com/watch?v=dXlCjmLzNp0) to select posts.
 
-After reading enough of these, I stopped hearing the individual stories these men were trying to tell, and started to see them as just the low-level enemy's perspective in the tale of a heroic protagonist is just trying accomplish one quest or another, but strange creatures keep trying to butt into the scene: perhaps this is the adventure of being a woman in the world?
+After reading enough of these, I stopped hearing the individual stories these men were trying to tell, and started to see them as just the low-level enemy's perspective in a different tale: a heroic protagonist is trying accomplish one quest or another, but strange creatures keep trying to butt into the scene. Perhaps this is the adventure of being a woman in the world?
 
-Most likely not all those heterosexual, cis-gendered, male NPCs writing up their longing looks across the cereal aisle are creeps—having posted to /mis/ myself, I certainly hope not—but I hope we can all agree that if there's any class fit to be algorithmically replaced by monsters with names like "Berserk Flesh Golem", and "Caustic Creeper", it's us.
+Most likely, #notallmen writing up their longing looks across the cereal aisle are creeps—having posted to /mis/ myself, I certainly hope not—but I hope we can all agree that if there's any class fit to be algorithmically replaced by monsters with names like "Berserk Flesh Golem", and "Caustic Creeper", it's us.
 
 ##How Do I Use This?
 

@@ -1,7 +1,7 @@
 // Our Twitter library
 var Twit = require('twit');
 var sqlite3 = require('sqlite3').verbose();
-var db = new sqlite3.Database('adventureConnections.sqlite');
+var db = new sqlite3.Database('/srv/missed_adventures/adventureConnections.sqlite');
 var fs = require('fs');
 
 /*
@@ -17,7 +17,7 @@ var temp_description = "";
 
 var creatures = [];
 
-var monsterdata = fs.readFileSync('./monsters.js'),
+var monsterdata = fs.readFileSync('/srv/missed_adventures/monsters.js'),
     myObj;
 
 try {
@@ -35,16 +35,19 @@ catch (err) {
 db.serialize(function(){
 	db.run("UPDATE setups SET used=0;");
 	db.run("UPDATE descriptions SET used=0;");
-});*/
+});
+
+process.exit();
+*/
 
 getTweet();
 
 // Change this to change the tweet frequency:
-setInterval(getTweet, 1000 * 60 * 60 * 3);
+//setInterval(getTweet, 1000 * 60 * 60 * 1);
 
 function getTweet()
 {
-	db.get("SELECT * FROM setups WHERE used=0 ORDER BY RANDOM() LIMIT 1;", [], function(err, setup_row){
+	db.get("SELECT * FROM setups WHERE used=0 OR used IS NULL ORDER BY RANDOM() LIMIT 1;", [], function(err, setup_row){
 		temp_setup = setup_row.content;
 
 		if (puncs.indexOf(temp_setup.charAt(temp_setup.length-1))==-1)
@@ -52,7 +55,7 @@ function getTweet()
 			temp_setup = temp_setup + ".";
 		}
 
-		db.get("SELECT * FROM descriptions WHERE used=0 ORDER BY RANDOM() LIMIT 1;", [], function(err, description_row){
+		db.get("SELECT * FROM descriptions WHERE used=0 OR used IS NULL ORDER BY RANDOM() LIMIT 1;", [], function(err, description_row){
 			temp_description = description_row.content;
 			if (puncs.indexOf(temp_description.charAt(temp_description.length-1))==-1)
 			{
@@ -75,7 +78,7 @@ function capitalize(text)
 	return text;
 }
 
-function buildTweet(setupid,descriptionid)
+function buildTweet(setupConnectionID,setupSentenceID,descriptionConnectionID,descriptionSentenceID)
 {
 	temp_setup = temp_setup.replace("{INSERT_CREATURE}",function(){return randomCreature();});
 	temp_description = temp_description.replace("{INSERT_CREATURE}",function(){return randomCreature();});
@@ -95,12 +98,12 @@ function buildTweet(setupid,descriptionid)
 	else
 	{
 		db.serialize(function(){
-				var setup_stmt = db.prepare("UPDATE setups SET used=1 WHERE id=?;");
-				setup_stmt.run(setupid);
+				var setup_stmt = db.prepare("UPDATE setups SET used=1 WHERE connectionID=? AND sentenceNumber=?;");
+				setup_stmt.run(setupConnectionID,setupSentenceID);
 				setup_stmt.finalize();
 
-				var desc_stmt = db.prepare("UPDATE descriptions SET used=1 WHERE id=?;");
-				desc_stmt.run(descriptionid);
+				var desc_stmt = db.prepare("UPDATE descriptions SET used=1 WHERE connectionID=? AND sentenceNumber=?;");
+				desc_stmt.run(descriptionConnectionID,descriptionSentenceID);
 				desc_stmt.finalize();
 		});
 		/*if (tweet.length<133 && Math.floor(Math.random()*10)>1)

@@ -23,13 +23,16 @@ catch (err) {
 db.serialize(function(){
 	//db.run("DROP TABLE setups;");
 	//db.run("DROP TABLE descriptions;")
-//	db.run("CREATE TABLE setups (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
-//	db.run("CREATE TABLE descriptions (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
+	//db.run("CREATE TABLE setups (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
+	//db.run("CREATE TABLE descriptions (content TEXT, used INTEGER DEFAULT 0, connectionID INTEGER, sentenceNumber INTEGER, PRIMARY KEY (connectionID, sentenceNumber))");
 
-	db.each("SELECT id, connection FROM connections WHERE parsed=0 OR parsed IS NULL ORDER BY RANDOM();", [], function(err, row){
-			if (err)
-				console.log(err);
-			//console.dir(row);
+	db.run("DELETE FROM setups WHERE used=0 OR used IS NULL;");
+	db.run("DELETE FROM descriptions WHERE used=0 OR used IS NULL;");
+
+	db.each("SELECT id, connection FROM connections WHERE parsed=1 OR parsed=0 OR parsed IS NULL ORDER BY RANDOM();", [], function(err, row){
+		if (err)
+			console.log(err);
+		//console.dir(row);
 
 		parseConnection(row.connection,row.id,function(err, setups, descriptions){
 
@@ -55,6 +58,8 @@ db.serialize(function(){
 			});
 		});
 	}, function(err, num_rows){
+		db.run("UPDATE setups SET used=0 WHERE used IS NULL");
+		db.run("UPDATE descriptions SET used=0 WHERE used IS NULL");
 		console.log("All done, worked through " + num_rows + " connections!");
 	});
 });
@@ -104,7 +109,8 @@ function parseConnection(text, connectionID, callback)
 	text = text.replace(/(wouldn\'t)/gi,"doesn't");
 	text = text.replace(/(wasn\'t)/gi,"isn't");
 	text = text.replace(/I have/g,"I has");
-
+	text = text.replace(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|April|June|July|August|September|October|November|December|(at )*about|around|night|(this )*morning|(this )*evening|(this )*afternoon|today|between|(the [0-9]+(th|nd|st)*)|([0-9]+[\s]*(th|nd|st))|([0-9]+,[\s]*(19|20)[0-9]{2})|([0-9]+[\s]*[pam]{2})|((and )*[0-9]{1,2}[: ]+[0-9]{2}[\s]*(pm|am)*)|[\s,]){4,}/g,"");
+	text = text.replace(/((Monday|Tuesday|Wednesday|Thursday|Friday|today|tonight|yesterday)[\.\,\?\!])/g,"");
 	var parsed = nlp.pos(text);
 
 	for (var senti = parsed.sentences.length - 1; senti >= 0; senti--) {
@@ -116,7 +122,7 @@ function parseConnection(text, connectionID, callback)
 		if (sentence.verbs().length==0)
 			continue;
 
-		var sentenceText = sentence.text();
+		var sentenceText = sentence.text().trim();
 
 		if (sentenceText.length>110)
 			continue;
@@ -124,73 +130,25 @@ function parseConnection(text, connectionID, callback)
 		if (sentenceText.charAt(sentenceText.length -1)=='?')
 			continue;
 
+		sentenceText = sentenceText.replace(/^["'* \.-]*(Yesterday|Last night|Today|Tonight|Monday|tuesday|wednesday|thursday|Friday|Saturday|Sunday|this afternoon|this morning|this evening)+[\s](night|evening|afternoon|morning)*/,"");
+
 		if (/missed connections/gi.test(sentenceText)
 			||
 			/so i know it[\']*s you/gi.test(sentenceText)
 			||
-			/reply/gi.test(sentenceText)
+			/(reply|respond)/gi.test(sentenceText)
 			||
-			/respond/gi.test(sentenceText)
-			||
-			/pussy/gi.test(sentenceText)
-			||
-			/fuck/gi.test(sentenceText)
-			||
-			/shit/gi.test(sentenceText)
-			||
-			/slut/gi.test(sentenceText)
-			||
-			/bitch/gi.test(sentenceText)
-			||
-			/nigger/gi.test(sentenceText)
-			||
-			/spic/gi.test(sentenceText)
-			||
-			/fag/gi.test(sentenceText)
+			/(pussy|fuck|shit|slut|bitch|nigger|fag)/gi.test(sentenceText)
 			||
 			/jack(ing|ed) off/gi.test(sentenceText)
 			||
-			/January/gi.test(sentenceText)
+			/(January|February|April|June|July|August|September|October|November|December)/gi.test(sentenceText)
 			||
-			/February/gi.test(sentenceText)
-			||
-			/March/g.test(sentenceText)
-			||
-			/April/gi.test(sentenceText)
-			||
-			/May/g.test(sentenceText)
-			||
-			/June/gi.test(sentenceText)
-			||
-			/July/gi.test(sentenceText)
-			||
-			/August/gi.test(sentenceText)
-			||
-			/September/gi.test(sentenceText)
-			||
-			/October/gi.test(sentenceText)
-			||
-			/November/gi.test(sentenceText)
-			||
-			/December/gi.test(sentenceText)
-			||
-			/yesterday/gi.test(sentenceText)
+			/(March|May)/g.test(sentenceText)
 			||
 			/last week/gi.test(sentenceText)
 			||
-			/sunday/gi.test(sentenceText)
-			||
-			/monday/gi.test(sentenceText)
-			||
-			/tuesday/gi.test(sentenceText)
-			||
-			/wednesday/gi.test(sentenceText)
-			||
-			/thursday/gi.test(sentenceText)
-			||
-			/friday/gi.test(sentenceText)
-			||
-			/saturday/gi.test(sentenceText)
+			/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi.test(sentenceText)
 			||
 			/if this is you/gi.test(sentenceText)
 			||
@@ -200,15 +158,22 @@ function parseConnection(text, connectionID, callback)
 			||
 			/ ago/gi.test(sentenceText)
 			||
-			/today/gi.test(sentenceText)
-			||
-			/yesterday/gi.test(sentenceText)
+			/(yester|to)day/gi.test(sentenceText)
 			||
 			/hit me up/gi.test(sentenceText)
 			||
 			/tell me what/gi.test(sentenceText)
+			||
+			/oh my(?!: god)/gi.test(sentenceText)
+			||
+			/^You are[\w\s]*(hot|pretty|beautiful|gorgeous|sexy|stunning|absolutely)/gi.test(sentenceText)
+			||
+			/long shot/gi.test(sentenceText)
 			)
+			{
+			console.log("Skip: " + sentenceText);
 			continue;
+			}
 
 		if (sentenceText.indexOf("?")==sentenceText.length-1) {
 			if (sentenceText.indexOf("homepage")>-1)

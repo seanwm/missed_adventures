@@ -11,11 +11,15 @@ Simply put, an [Ogre Chieftan] thinks you are the most beautiful woman it'd ever
 
 Well, I've been wanting to create a Twitter bot for a while now. It occurred to me one evening that most missed connections posts are simple sentences that either set a scene, or describe a person. And having built a MUD some years ago, and played more World of Warcraft than was healthy, I thought they were *almost* readymade to be (mis)used to describe an adventurer's path through a dungeon. I'd just need to change the tense of any verbs, to turn this:
 
-"You were flustered, in a hurry, and mistook me for an employee."
+```
+You were flustered, in a hurry, and mistook me for an employee.
+```
 
 into this:
 
-"You are flustered, in a hurry, and mistake a [Desert Elf] for an employee."
+```
+You are flustered, in a hurry, and mistake a [Desert Elf] for an employee.
+```
 
 Changing the tense of these sentences in a coherent way ended up being more complicated than I first imagined, but that's the gist of it. And missed connections posts have turned out to be less formulaic than I expected, which makes the parsing harder but the results better: with romance at stake, people often (though certainly not always) write some pretty purple prose, or at least a few complete sentences with a minimum number of misspellings.
 

@@ -62,7 +62,7 @@ function getTweet()
 				temp_description = temp_description + ".";
 			}
 
-			buildTweet(setup_row.id,description_row.id);
+			buildTweet(setup_row.connectionID,setup_row.sentenceNumber,description_row.connectionID,description_row.sentenceNumber);
 		});
 
 	});	
@@ -86,7 +86,32 @@ function buildTweet(setupConnectionID,setupSentenceID,descriptionConnectionID,de
 	temp_setup = capitalize(temp_setup);
 	temp_description = capitalize(temp_description);
 
-	var tweet =  temp_setup + "\n" + temp_description;
+	var tweet = "";
+         
+    var dice = Math.floor(Math.random()*10);
+
+    var used_setup = false;
+    var used_description = false;
+                            
+    if (dice==10)
+    {
+        tweet = temp_setup + "\n" + temp_description;
+        used_setup = true;
+        used_description = true;
+    }
+    else if (dice > 6)
+    {
+        tweet = temp_setup;
+        used_setup = true;
+    }
+    else
+    {
+        tweet = temp_description;
+        used_description = true;
+    }
+
+
+	//var tweet =  temp_setup + "\n" + temp_description;
 
 	if (tweet.indexOf("Senmurv")>-1)
 		tweet.replace("Senmurv", "Senmurv (http://gryphonking.aelfhame.net/iview.php3?folder=art/games&name=senmurv)");
@@ -98,13 +123,19 @@ function buildTweet(setupConnectionID,setupSentenceID,descriptionConnectionID,de
 	else
 	{
 		db.serialize(function(){
+			if (used_setup===true)
+			{
 				var setup_stmt = db.prepare("UPDATE setups SET used=1 WHERE connectionID=? AND sentenceNumber=?;");
 				setup_stmt.run(setupConnectionID,setupSentenceID);
 				setup_stmt.finalize();
+			}
 
+			if (used_description===true)
+			{
 				var desc_stmt = db.prepare("UPDATE descriptions SET used=1 WHERE connectionID=? AND sentenceNumber=?;");
 				desc_stmt.run(descriptionConnectionID,descriptionSentenceID);
 				desc_stmt.finalize();
+			}
 		});
 		/*if (tweet.length<133 && Math.floor(Math.random()*10)>1)
 		{

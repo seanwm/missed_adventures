@@ -95,7 +95,7 @@ function parseConnection(text, connectionID, callback)
 	var descriptions = [];
 
 	text = text.trim();
-	text = text.replace(/so i know it\'s you/gi,"");
+	text = text.replace(/so i know it\'s you/gi," ");
 	text = text.replace(/(I)\'ve/gi,"$1 has");
 	text = text.replace(/(you)\'ve/gi,"$1 have");
 	text = text.replace(/(I)\'m/gi,"$1 is");
@@ -103,14 +103,13 @@ function parseConnection(text, connectionID, callback)
 	//text = text.replace(/(You)\'d/gi,"$1");
 	text = text.replace(/(you)\'re/gi,"$1 are");
 	text = text.replace(/[Iu]\'ll/ig, " will");
-	text = text.replace(/(couldn\'t)/gi,"can't");
-	text = text.replace(/(could)/gi,"can");
-	text = text.replace(/(you wouldn\'t)/gi,"you don't");
+	//text = text.replace(/(couldn\'t)/gi,"can't");
+	//text = text.replace(/(could)/gi,"can");
+	//text = text.replace(/(you wouldn\'t)/gi,"you don't");
 	text = text.replace(/(wouldn\'t)/gi,"doesn't");
 	text = text.replace(/(wasn\'t)/gi,"isn't");
 	text = text.replace(/I have/g,"I has");
-	text = text.replace(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|April|June|July|August|September|October|November|December|(at )*about|around|night|(this )*morning|(this )*evening|(this )*afternoon|today|between|(the [0-9]+(th|nd|st)*)|([0-9]+[\s]*(th|nd|st))|([0-9]+,[\s]*(19|20)[0-9]{2})|([0-9]+[\s]*[pam]{2})|((and )*[0-9]{1,2}[: ]+[0-9]{2}[\s]*(pm|am)*)|[\s,]){4,}/g,"");
-	text = text.replace(/((Monday|Tuesday|Wednesday|Thursday|Friday|today|tonight|yesterday)[\.\,\?\!])/g,"");
+	text = text.replace(/((Monday|Tuesday|Wednesday|Thursday|Friday|today|tonight|yesterday)[\.\,\?\!])/g," ");
 	var parsed = nlp.pos(text);
 
 	for (var senti = parsed.sentences.length - 1; senti >= 0; senti--) {
@@ -130,7 +129,8 @@ function parseConnection(text, connectionID, callback)
 		if (sentenceText.charAt(sentenceText.length -1)=='?')
 			continue;
 
-		sentenceText = sentenceText.replace(/^["'* \.-]*(Yesterday|Last night|Today|Tonight|Monday|tuesday|wednesday|thursday|Friday|Saturday|Sunday|this afternoon|this morning|this evening)+[\s](night|evening|afternoon|morning)*/,"");
+		sentenceText = sentenceText.replace(/^["'* \.-]*(Yesterday|Last night|Today|Tonight|Monday|tuesday|wednesday|thursday|Friday|Saturday|Sunday|this afternoon|this morning|this evening)+[\s](night|evening|afternoon|morning)*/," ");
+		sentenceText = sentenceText.replace(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|April|June|July|August|September|October|November|December|(at )*about|around|night|(this )*morning|(this )*evening|(this )*afternoon|today|between|(the [0-9]+(th|nd|st)*)|([0-9]+[\s]*(th|nd|st))|([0-9]+,[\s]*(19|20)[0-9]{2})|([0-9]+[\s]*[pam]{2})|((and )*[0-9]{1,2}[: ]+[0-9]{2}[\s]*(pm|am)*)|[\s,]){4,}/g," ");
 
 		if (/missed connections/gi.test(sentenceText)
 			||
@@ -171,7 +171,7 @@ function parseConnection(text, connectionID, callback)
 			/long shot/gi.test(sentenceText)
 			)
 			{
-			console.log("Skip: " + sentenceText);
+			//console.log("Skip: " + sentenceText);
 			continue;
 			}
 
@@ -180,22 +180,22 @@ function parseConnection(text, connectionID, callback)
 				continue;
 		}
 
-		sentenceText = sentenceText.replace(/^if only/gi,"");
-		sentenceText = sentenceText.replace(/^besides,/gi,"");
-		sentenceText = sentenceText.replace(/^Still,/gi,"");
+		sentenceText = sentenceText.replace(/^if only/gi," ");
+		sentenceText = sentenceText.replace(/^besides,/gi," ");
+		sentenceText = sentenceText.replace(/^Still,/gi," ");
 		sentenceText = sentenceText.replace(/must of/gi,"must have");
 		sentenceText = sentenceText.replace(/^Would/gi,"I would");
 		sentenceText = sentenceText.replace(/^Didn't/gi,"I doesn't");
 		sentenceText = sentenceText.replace(/^Don't/gi,"I doesn't");
 		sentenceText = sentenceText.replace(/^Saw/gi,"I sees");
-		sentenceText = sentenceText.replace(/^But /gi,"");
-		sentenceText = sentenceText.replace(/^And /gi,"");
+		sentenceText = sentenceText.replace(/^But /gi," ");
+		sentenceText = sentenceText.replace(/^And /gi," ");
 		sentenceText = sentenceText.replace(/i didn't/gi,"I doesn't");
 		sentenceText = sentenceText.replace(/you didn't/gi,"you don't");
 		sentenceText = sentenceText.replace(/you seemed/gi,"you seem");
 		sentenceText = sentenceText.replace(/i don't/gi,"I doesn't");
 		sentenceText = sentenceText.replace(/i wasn't/gi,"I isn't");
-		sentenceText = sentenceText.replace(/(left)([\.\?\!])/gi,"leave$2");
+		sentenceText = sentenceText.replace(/(!my|!your|!his|!her|!its|!their)[\s]*(left)([\.\?\!])/gi,"leave$2");
 		sentenceText = sentenceText.replace(/it didn't/gi,"it doesn't");
 		sentenceText = sentenceText.replace(/seattle/gi,places[Math.floor(Math.random()*places.length)]);
 		sentenceText = sentenceText.replace(/boston/gi,places[Math.floor(Math.random()*places.length)]);

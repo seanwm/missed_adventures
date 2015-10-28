@@ -36,6 +36,19 @@ After reading enough of these, I stopped hearing the individual stories these me
 
 Most likely, #notallmen writing up their longing looks across the cereal aisle are creeps—having posted to /mis/ myself, I certainly hope not—but I hope we can all agree that if there's any class fit to be algorithmically replaced by monsters with names like "Berserk Flesh Golem", and "Caustic Creeper", it's us.
 
+##How does it work?
+
+To elaborate a bit more on exactly what the code does:
+
+* Uses nlp-compromise to break missed connections posts up into individual sentences.
+* Does a lot of regexing to throw out sentences with bad words (some might still sneak through!), or with a general meaning that wouldn't work well (I throw out most "tell me what I was wearing when you reply" type sentences).
+* Does more regexing to throw out date/time references. E.g. "You were standing by the soda machine last night" becomes "You were standing by the soda machine"
+* Verb tense changing is hard, and nlp-compromise is, well, a compromise, so there's a far amount of manual verb tense changing. Which is silly, but I think it helps. 
+* Loops through tokens in each sentence looking for verbs, and changing them into their present tense or infinitive form based on some best guesses involving preceding works. I.e. "I played" should become "I plays" (since "I" will be swapped for a [Monster]), while "you played" should become "you play". This algorithm could probably benefit from a cleanup.
+* More regexes swap the first usage of I/my/we/mine/etc with a monster placeholder (adding "you and " for we, appending "'s" for mine, etc), and later instances with some form of "it".
+* Does a little cleanup to ensure sentences end with punctuation, start with a capital letter, etc.
+* Puts any sentence starting "It is" or "You " into the setups bucket, and any other sentence where a monster substitution was performed into the descriptions bucket. Originally tweets were each going to have one setup sentence and one description, but now it just randomly chooses one of the two.
+
 ##How Do I Use This?
 
 I'm going to start this section with a blanket apology for the code, and leave the caveats at that. Here's what you'll need to do to get this running:

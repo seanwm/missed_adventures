@@ -115,7 +115,8 @@ function replaceAfter(haystack, needle, pin, minIndex)
 			loop = false;
 	}
 
-	if (verbose || needle!=super_original_needle) console.log("Needle end: " + super_original_needle + " -> " + needle);
+	if (verbose || needle!=super_original_needle) 
+		console.log("Needle end: " + super_original_needle + " -> " + needle);
 
 	var re = new RegExp(needle,"g");
 
@@ -174,6 +175,7 @@ function parseConnection(text, connectionID, callback)
 		sentenceText = sentenceText.replace(/(wasn\'t)/gi,"isn't");
 		sentenceText = sentenceText.replace(/I have/gi,"I has");
 		sentenceText = sentenceText.replace(/((Monday|Tuesday|Wednesday|Thursday|Friday|today|tonight|yesterday)[\.\,\?\!])/gi," ");
+		sentenceText = sentenceText.replace(/((have|haven't|has|hasn't|could|couldn't|would|wouldn't)([\s]+)(even))/g,"$1");
 		sentenceText = sentenceText.replace(/^["'* \.-]*(Yesterday|Last night|Today|Tonight|Monday|tuesday|wednesday|thursday|Friday|Saturday|Sunday|this afternoon|this morning|this evening)+[\s](night|evening|afternoon|morning)*/," ");
 		sentenceText = sentenceText.replace(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|April|June|July|August|September|October|November|December|(at )*about|around|night|(this )*morning|(this )*evening|(this )*afternoon|today|between|(the [0-9]+(th|nd|st)*)|([0-9]+[\s]*(th|nd|st))|([0-9]+,[\s]*(19|20)[0-9]{2})|([0-9]+[\s]*[pam]{2})|((and )*[0-9]{1,2}[: ]+[0-9]{2}[\s]*(pm|am)*)|[\s,]){4,}/gi," ");
 		sentenceText = sentenceText.replace(/([0-9]{1,4}\/[0-9]{1,2}\/[0-9]{1,4})/gi," ");
@@ -280,8 +282,9 @@ function parseConnection(text, connectionID, callback)
 		var last_token_pos = "";
 		var last_verb_you = false;
 
-		var removeIfPastTenseAfter = ["has","have","should've","shouldve"];
-		var useInfAfter = ["could","couldnt","should","shouldn't","shouldnt","would","wouldn't","wouldnt","had","to","does","do","hasn't","hasnt"];
+		var removeIfPastTenseAfter = ["has","have","should've","shouldve","hasn't","haven't","hasnt","havent"];
+		var useInfAfter = ["could","couldnt","couldn't","should","shouldn't","shouldnt","would","wouldn't","wouldnt","had","to","does","do","hasn't","hasnt","doesn't","don't","it'd","doesnt","dont","itd"];
+		var irregularsToSkip = ["been","read","at"];
 		var last_subject = "";
 		var token_index = 0;
 
@@ -342,7 +345,9 @@ function parseConnection(text, connectionID, callback)
 			/*
 			* First some manual things.
 			*/
-			if (token_tag=="VBD" || token_tag=="CP" || token_tag=="VB" || token_tag=="VBP" || token_tag=="VBZ" || token_tag=="CP")
+			if (irregularsToSkip.indexOf(token_text.toLowerCase())==-1 && 
+				(token.pos.tag=="VBD" || token.pos.tag=="CP" || token.pos.tag=="VB" || token.pos.tag=="VBP" || token.pos.tag=="VBZ" || token.pos.tag=="CP")
+			)
 			{
 				if (verbose) console.log("last_token: "+last_token);
 				if (verbose) console.log("Verb: "+token_text + " (" + token.pos.tag + "/" + token_tag + ")");
@@ -379,13 +384,7 @@ function parseConnection(text, connectionID, callback)
 					mangled = replaceAfter(mangled, token.text, vbinf, token_index);
 					if (verbose) console.log("inf swap: " + vbinf);
 				}
-			}/*
-			else if (useInfAfter.indexOf(last_token)>-1  &&
-                                        (last_subject=="it" || token_tag=="CP") )
-                                {
-                                        mangled = replaceAfter(mangled, token.text, vbpres, token_index);
-                                        if (verbose) console.log("pres swap: " + vbpres);
-                                }*/
+			}
 
 			last_token_pos = token_tag;
 

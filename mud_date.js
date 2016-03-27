@@ -48,7 +48,7 @@ getTweet();
 function getTweet()
 {
 	db.get("SELECT * FROM setups WHERE used=0 OR used IS NULL ORDER BY RANDOM() LIMIT 1;", [], function(err, setup_row){
-		temp_setup = setup_row.content;
+		temp_setup = setup_row.content.trim();
 
 		if (puncs.indexOf(temp_setup.charAt(temp_setup.length-1))==-1)
 		{
@@ -56,7 +56,7 @@ function getTweet()
 		}
 
 		db.get("SELECT * FROM descriptions WHERE used=0 OR used IS NULL ORDER BY RANDOM() LIMIT 1;", [], function(err, description_row){
-			temp_description = description_row.content;
+			temp_description = description_row.content.trim();
 			if (puncs.indexOf(temp_description.charAt(temp_description.length-1))==-1)
 			{
 				temp_description = temp_description + ".";
@@ -99,7 +99,7 @@ function buildTweet(setupConnectionID,setupSentenceID,descriptionConnectionID,de
         used_setup = true;
         used_description = true;
     }
-    else if (dice > 6)
+    else if (dice > 9)
     {
         tweet = temp_setup;
         used_setup = true;
@@ -148,6 +148,8 @@ function buildTweet(setupConnectionID,setupSentenceID,descriptionConnectionID,de
 			tweet = tweet + "\n" + tweet_dirs
 		}*/
 
+		tweet = tweet.replace(".s.",".");
+		
 		console.log(tweet.length + ": \n" + tweet);
 
 		postTweet(tweet);
